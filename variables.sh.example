@@ -1,0 +1,3 @@
+# Copy this file to variables.sh and set the variables below
+webhook_url="https://<instance>.slack.com/services/hooks/incoming-webhook?token=<token>"
+channel="#<channel>"

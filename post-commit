@@ -1,0 +1,34 @@
+#!/bin/bash
+# Post to Slack after a commit, with testing results
+source variables.sh
+
+root=$(git rev-parse --show-toplevel)
+cd $root
+repo=$(basename $root)
+user=$(git config --global --get user.name)
+
+# Try to run with test coverage first
+output=$(bundle exec rake test:coverage 2>/dev/null)
+coverage=1
+
+if [ -z "$output" ]
+then
+  output=$(bundle exec rake test)
+  coverage=0
+fi
+
+output=$(echo $output | sed 's/.*\(Finished\( tests\)\? in [0-9.]\+s,\).*[^0-9]\([0-9]\+ \(tests\|runs\), .*\)/\1 *\3*/g' | sed 's/Finished /executed /g')
+
+if (($coverage))
+then
+  output=$(echo $output | sed 's/Coverage.*(\([0-9.]\+%\)).*/(\1 code coverage)*/g')
+fi
+
+rev=$(git log -1 --format=format:%h)
+ref=$(git rev-parse --abbrev-ref HEAD)
+cd - >/dev/null
+msg=$(echo "Build $rev of $repo/$ref by $user $output")
+
+curl -X POST --data-urlencode "payload={\"channel\": \"$channel\", \"username\": \"Git CI\", \"text\": \"$msg\"}" $webhook_url
+
+exit 0
